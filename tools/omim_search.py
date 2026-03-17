@@ -14,21 +14,6 @@ def OMIMSearchTool(query: str):
     Returns:
         str: The search results or an error message.
     """
-    # 代理设置
-    proxyAddr = "tun-sbftjg.qg.net:12749"
-    authKey = "15944DB1"
-    password = "6D5A0323C226"
-    
-    proxyUrl = "http://%(user)s:%(password)s@%(server)s" % {
-        "user": authKey,
-        "password": password,
-        "server": proxyAddr,
-    }
-    
-    proxies = {
-        "http": proxyUrl,
-        "https": proxyUrl,
-    }
 
     # 输入 OMIM ID
     if query.startswith('OMIM:'):
@@ -36,10 +21,9 @@ def OMIMSearchTool(query: str):
 
     url = f'https://www.omim.org/entry/{query}'
 
-    # use requests to get the page with proxy
+    # use requests to get the page
     response = requests.get(url, 
                             headers={'User-Agent': ua.random},
-                            proxies=proxies,
                             timeout=10)
     response.raise_for_status()
     all_paragraph = response.text
