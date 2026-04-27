@@ -20,6 +20,16 @@ def set_up_args():
     # chrome driver path
     parser.add_argument('--chrome_driver', type=str, default='/usr/local/bin/chromedriver')
     
+    # Detección de Almacenamiento Maestro (Disco Externo de 1TB)
+    args_tmp, _ = parser.parse_known_args()
+    master_storage_root = None
+    potential_roots = ["/Volumes/KIOXIA/DeepRare", "/Volumes/Expansion/DeepRare", "/mnt/master_storage/DeepRare"]
+    for root in potential_roots:
+        if os.path.exists(root):
+            master_storage_root = root
+            print(f"📦 Almacenamiento Maestro Detectado: {root}")
+            break
+    
     # file paths
     parser.add_argument('--orphanetPath', type=str, default='./database/orpha_disorders_HP_map.json')
     parser.add_argument('--orpha_concept2id', type=str, default='./database/orpha_concept2id.json')
@@ -33,9 +43,14 @@ def set_up_args():
     parser.add_argument('--similar_case_path', type=str, default='./database/RDS_embeddings.csv')
     parser.add_argument('--dataset_name', type=str, default="HMS", choices=["RAMEDIS", "MME", "HMS", "LIRICAL", "Xinhua", "MIMIC", "mygene", "DDD", "case"])
     parser.add_argument('--dataset_path', default='chenxz/RareBench')
-    parser.add_argument('--results_folder', default='./result_simcase1/')
+    
+    # Prioritize external storage for heavy output
+    default_results = os.path.join(kioxia_root, "results") if is_kioxia_available else './result_simcase1/'
+    default_exomiser = os.path.join(kioxia_root, "exomiser_results") if is_kioxia_available else 'exomiser_results/'
+    
+    parser.add_argument('--results_folder', default=default_results)
     parser.add_argument('--exomiser_jar', type=str, default='./exomiser-cli-14.1.0/exomiser-cli-14.1.0.jar')  # Path to Exomiser JAR file
-    parser.add_argument('--exomiser_save_path', type=str, default='exomiser_results/')  # Directory to save Exomiser results
+    parser.add_argument('--exomiser_save_path', type=str, default=default_exomiser)  # Directory to save Exomiser results
     
     # API keys
     parser.add_argument('--openai_apikey', type=str, default='')
@@ -60,6 +75,7 @@ def set_up_args():
     parser.add_argument('--gene', type=bool, default=False)
     
     args = parser.parse_args()
+    args.kioxia_root = kioxia_root if is_kioxia_available else None
     
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -100,43 +116,71 @@ def set_up_data(args, eval_model, eval_tokenizer):
         orpha2omim = json.load(f)
         
     # load similar cases 
-    pubmed_cases = pd.read_csv(args.similar_case_path)[['_id', 'case_report', 'embedding', 'diagnosis']]
-    pubmed_cases['data_source'] = 'PubMed_cases'
-
-    xinhua_cases = pd.read_csv('dataset/xinhua_rag_0331.csv')
-    xinhua_cases = xinhua_cases[['门诊号', 'phenotype', 'embedding', 'orpha']].rename(
-        columns={'门诊号': '_id', 'phenotype': 'case_report',  'orpha': 'diagnosis'})
-    xinhua_cases['data_source'] = 'xinhua'
+    dfs_to_concat = []
     
+    try:
+        pubmed_cases = pd.read_csv(args.similar_case_path)[['_id', 'case_report', 'embedding', 'diagnosis']]
+        pubmed_cases['data_source'] = 'PubMed_cases'
+        dfs_to_concat.append(pubmed_cases)
+    except FileNotFoundError:
+        print(f"Warning: Could not find {args.similar_case_path}")
+
     def map_disease(disease_mapping, disease_list):
         disease = [disease_mapping[disease] for disease in disease_list if disease in disease_mapping]
         return ', '.join(disease)
         
-    disease_mapping = json.load(open(args.disease_mapping, "r", encoding="utf-8-sig"))    
-    xinhua_cases['diagnosis'] = xinhua_cases['diagnosis'].apply(lambda x: map_disease(disease_mapping, eval(x)))
+    try:
+        disease_mapping = json.load(open(args.disease_mapping, "r", encoding="utf-8-sig"))    
+        xinhua_cases = pd.read_csv('dataset/xinhua_rag_0331.csv')
+        xinhua_cases = xinhua_cases[['门诊号', 'phenotype', 'embedding', 'orpha']].rename(
+            columns={'门诊号': '_id', 'phenotype': 'case_report',  'orpha': 'diagnosis'})
+        xinhua_cases['data_source'] = 'xinhua'
+        xinhua_cases['diagnosis'] = xinhua_cases['diagnosis'].apply(lambda x: map_disease(disease_mapping, eval(x)))
+        dfs_to_concat.append(xinhua_cases)
+    except FileNotFoundError:
+        print("Warning: Could not find xinhua_rag_0331.csv")
+        
+    try:
+        mimic_cases = pd.read_csv('dataset/mimic_rag.csv')
+        mimic_cases = mimic_cases[['note_id', 'phenotype', 'embedding', 'diagnosis']].rename(
+            columns={'note_id': '_id', 'phenotype': 'case_report'})
+        mimic_cases['data_source'] = 'mimic'
+        dfs_to_concat.append(mimic_cases)
+    except FileNotFoundError:
+        print("Warning: Could not find mimic_rag.csv")
     
-    mimic_cases = pd.read_csv('dataset/mimic_rag.csv')
-    mimic_cases = mimic_cases[['note_id', 'phenotype', 'embedding', 'diagnosis']].rename(
-        columns={'note_id': '_id', 'phenotype': 'case_report'})
-    mimic_cases['data_source'] = 'mimic'
+    try:
+        rarebench_cases = pd.read_csv('dataset/rarebench_rag.csv')
+        rarebench_cases = rarebench_cases[['Department', 'Phenotype_detailed', 'embedding', 'Disease_detailed']].rename(
+            columns={'Department': '_id', 'Phenotype_detailed': 'case_report', 'Disease_detailed': 'diagnosis'})
+        rarebench_cases['data_source'] = 'rarebench'
+        dfs_to_concat.append(rarebench_cases)
+    except FileNotFoundError:
+        print("Warning: Could not find rarebench_rag.csv")
     
-    rarebench_cases = pd.read_csv('dataset/rarebench_rag.csv')
-    rarebench_cases = rarebench_cases[['Department', 'Phenotype_detailed', 'embedding', 'Disease_detailed']].rename(
-        columns={'Department': '_id', 'Phenotype_detailed': 'case_report', 'Disease_detailed': 'diagnosis'})
-    rarebench_cases['data_source'] = 'rarebench'
+    try:
+        mygene_cases = pd.read_csv('dataset/mygene_rag.csv')
+        mygene_cases = mygene_cases[['rag_id', 'Phenotype_detailed', 'embedding', 'Disease_detailed']].rename(
+            columns={'rag_id': '_id', 'Phenotype_detailed': 'case_report', 'Disease_detailed': 'diagnosis'})
+        mygene_cases['data_source'] = 'mygene'
+        dfs_to_concat.append(mygene_cases)
+    except FileNotFoundError:
+        print("Warning: Could not find mygene_rag.csv")
     
-    mygene_cases = pd.read_csv('dataset/mygene_rag.csv')
-    mygene_cases = mygene_cases[['rag_id', 'Phenotype_detailed', 'embedding', 'Disease_detailed']].rename(
-        columns={'rag_id': '_id', 'Phenotype_detailed': 'case_report', 'Disease_detailed': 'diagnosis'})
-    mygene_cases['data_source'] = 'mygene'
-    
-    ddd_cases = pd.read_csv('dataset/ddd_rag.csv')
-    ddd_cases = ddd_cases[['rag_id', 'Phenotype_detailed', 'embedding', 'Disease_detailed']].rename(
-        columns={'rag_id': '_id', 'Phenotype_detailed': 'case_report', 'Disease_detailed': 'diagnosis'})
-    ddd_cases['data_source'] = 'ddd'
+    try:
+        ddd_cases = pd.read_csv('dataset/ddd_rag.csv')
+        ddd_cases = ddd_cases[['rag_id', 'Phenotype_detailed', 'embedding', 'Disease_detailed']].rename(
+            columns={'rag_id': '_id', 'Phenotype_detailed': 'case_report', 'Disease_detailed': 'diagnosis'})
+        ddd_cases['data_source'] = 'ddd'
+        dfs_to_concat.append(ddd_cases)
+    except FileNotFoundError:
+        print("Warning: Could not find ddd_rag.csv")
+
+    if not dfs_to_concat:
+        raise ValueError("No similar cases datasets found at all!")
 
     # Combine the similar cases
-    similar_cases = pd.concat([pubmed_cases, xinhua_cases, mimic_cases, rarebench_cases, mygene_cases, ddd_cases], ignore_index=True)
+    similar_cases = pd.concat(dfs_to_concat, ignore_index=True)
     
     # drop empty embeddings
     similar_cases = similar_cases[similar_cases['embedding'].notna()]

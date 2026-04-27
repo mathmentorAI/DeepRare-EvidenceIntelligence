@@ -16,6 +16,17 @@ from tools.phenobrain_api import PhenobrainAPITool
 from tools.omim_search import OMIMSearchTool
 from tools.llm_agent import Check_Agent, Check_Patient_Agent
 
+from claimlayer import ClaimLayer
+from claim_layer import IngestedDocument, IngestedClaim, IngestedFact
+from inference_engine import extraer_hechos_y_pregunta, inferir_hechos
+
+class LocalEmbeddingProvider:
+    def __init__(self, embedding_handler):
+        self.embedding_handler = embedding_handler
+
+    def embed(self, text: str) -> list[float]:
+        return self.embedding_handler(text)
+
 
 
 def get_pheonotype_knowledge(args, phenotypes, phenotype_ids, mini_handler):
@@ -377,17 +388,70 @@ Based on the above and your knowledge, enumerate the **top 5 most likely rare di
             if search_depth >= 2:
                 flag = False
                 result = "Theses diagnoses are not mostly incorrect, please check the patient information carefully."
+
+    # --- EVIDENCE INTELLIGENCE PHASE ---
+    print("--- PASO 1: Extracción Ontológica ---")
+    extraccion = extraer_hechos_y_pregunta(patient_info, handler)
+    hechos_base = extraccion.get("claims", [])
+    pregunta = extraccion.get("question", "What are the top 5 most likely rare disease diagnoses for this patient?")
+    
+    if not hechos_base:
+        hechos_base = [patient_info]
+
+    print("--- PASO 2: Motor de Inferencia Epistemológico ---")
+    evidencia_str = "\\n".join(hechos_base)
+    inferencia_data = inferir_hechos(evidencia_str, pregunta, handler)
+    
+    print("--- PASO 3 & 4: Consolidación en ClaimLayer ---")
+    provider = LocalEmbeddingProvider(embedding_handler)
+    cl = ClaimLayer(embedding_provider=provider)
+    
+    # Ingestar hechos base
+    cl.ingest(hechos_base)
+    
+    # Ingestar inferencia validada
+    if inferencia_data.get("accepted", False):
+        cid = "inf_001"
+        fact_text = inferencia_data.get("inferred_fact", "")
+        confidence = float(inferencia_data.get("confidence", 0.7))
+        doc_inferido = IngestedDocument(
+            project_id="default",
+            filename="motor_inferencia",
+            entities=[],
+            claims=[IngestedClaim(claim_id=cid, text=fact_text, confidence=confidence)],
+            facts=[IngestedFact(claim_ref=cid, entity_ref="document", fact_type="statement", value=fact_text)]
+        )
+        cl.ingest([doc_inferido])
+        
+    # Ingestar evidencias de las herramientas como documentos externos
+    tool_evidences = [
+        f"Similar cases evidence: {similar_case_detailed}",
+        f"Primary diagnosis result evidence: {result}",
+        f"Disease Reflection evidence: {judgements}"
+    ]
+    cl.ingest(tool_evidences)
+    
+    # Consulta a ClaimLayer para resolver contradicciones
+    cl_result = cl.ask(pregunta)
+    evidencias_recuperadas = []
+    if "results" in cl_result and len(cl_result["results"]) > 0:
+        for res in cl_result["results"]:
+            evidencias_recuperadas.append(f"- {res['value']} (Confianza: {res.get('confidence', 1.0):.4f})")
+
+    evidencia_contexto = "\\n".join(evidencias_recuperadas)
+    print("Evidencias matemáticamente validadas:")
+    print(evidencia_contexto)
                 
 
     memory_2 = f"""
-You have access to the following information:
-- Patient presentation: {prompt.split('Enumerate the top 5 most likely diagnoses.')[0]}
-- Similar cases: {similar_case_detailed}
-- Primary diagnosis results (with references): {result}
-- Disease Reflection (with references): {judgements}
+You are a deterministic clinical generator.
+You must base your final diagnosis STRICTLY on the mathematically validated evidence provided below. Do not assume or guess facts outside this epistemic state.
+
+Validated Evidence (E_t):
+{evidencia_contexto}
 
 **Task:**  
-Based on all the above, enumerate the top 5 most likely rare disease diagnoses for this patient.
+Based strictly on the above evidence, enumerate the top 5 most likely rare disease diagnoses for this patient.
 
 ---
 
@@ -397,10 +461,9 @@ Based on all the above, enumerate the top 5 most likely rare disease diagnoses f
 
 ### Diagnostic Reasoning:
 - Provide 3-4 sentences explaining why this diagnosis fits the patient's presentation.
-- Specify which patient symptoms and findings support this diagnosis.
+- Specify which patient symptoms and findings from the validated evidence support this diagnosis.
 - Clearly explain the underlying pathophysiological mechanisms (briefly).
 - Integrate and **cite specific evidence** from the provided references (including medical literature, similar cases, or judgement analyses), using in-text [X] citation style.
-- Try to cite as more sources and references but do not add hallucination content.
 
 ---
 
@@ -410,12 +473,10 @@ Based on all the above, enumerate the top 5 most likely rare disease diagnoses f
 - Number each reference in the order it is first cited ([1], [2], ...).
 - Only include sources you directly cited in your diagnostic reasoning above.
 - For each reference, should provide:
-    a. Source type (e.g., medical guideline, similar case, literature, diagnosis assisent tool...) ( Do not use source type: "Judgement analysis", "Disease Reflection" )
+    a. Source type (e.g., medical guideline, similar case, literature, diagnosis assisent tool...)
     b. Use 3-4 sentences to describe of the content and its relevance.
     c. For articles or literature, include the title and URL if provided.
 - Every in-text citation [X] in your reasoning should correspond to a numbered entry in your reference list.
-- Try to cover as more sources and references.
-- Do not repeat!!
 
 ---
 
@@ -423,12 +484,10 @@ Based on all the above, enumerate the top 5 most likely rare disease diagnoses f
 
 1. Each diagnosis must be a rare disease (**bolded** using markdown).
 2. Rank from most (#1) to least (#5) likely.
-3. Integrate information from all provided sources (medical literature, similar cases, and judgement analyses) wherever appropriate.
-4. Do **not** copy or invent references—only include those present in the provided materials.
-5. Remember to add the summary of the content, url for each reference.
+3. Do **not** hallucinate. Only use the facts given in the Validated Evidence.
 """
     
-    final_diagnois = handler.get_completion(system_prompt, memory_2 )
+    final_diagnois = handler.get_completion(system_prompt, memory_2)
 
 
     ### Return the patient information

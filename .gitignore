@@ -24,4 +24,7 @@ database/*
 exomizer-*/
 exomiser_results/*
 result/
-dataset/*
+dataset/*venv/
+*.db
+exomiser-cli-14.1.0/
+exomiser-cli-14.1.0.zip

@@ -1,0 +1,11 @@
+##fileformat=VCFv4.2
+##source=ClinVar
+##reference=GRCh38
+##INFO=<ID=ALLELEID,Number=1,Type=Integer,Description="the ClinVar Allele ID">
+##INFO=<ID=CLNDISDB,Number=.,Type=String,Description="Tag-value pairs of disease database name and identifier">
+##INFO=<ID=CLNDN,Number=.,Type=String,Description="ClinVar's preferred disease name for the concept specified by disease identifiers in CLNDISDB">
+##INFO=<ID=CLNSIG,Number=.,Type=String,Description="Clinical significance for this single variant">
+##INFO=<ID=CLNSIGCONF,Number=.,Type=String,Description="Conflicting clinical significance for this single variant">
+##FILTER=<ID=PASS,Description="All filters passed">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	MUESTRA_PACIENTE_01
+11	47348490	rs397515967	C	T	.	PASS	ALLELEID=51863;CLNDN=Hypertrophic_cardiomyopathy;CLNSIG=Conflicting_interpretations_of_pathogenicity;CLNSIGCONF=Benign(5)|Likely_benign(2)|Pathogenic(3)|Uncertain_significance(1)	GT:AD:DP:GQ:PL	0/1:15,14:29:99:400,0,450

@@ -248,47 +248,63 @@ def map_phenotypes_to_hpo(phenotypes: List[str], eval_model: Any, eval_tokenizer
 
 def extract_phenotypes_from_text(text: str, api: Openai_api) -> List[str]:
     """
-    Extract phenotypes from patient text using OpenAI API
-    
-    Args:
-        text: Patient information text
-        api: OpenAI API client
-        
-    Returns:
-        List of extracted phenotypes
+    Extract ontological facts (claims) from patient text using OpenAI API, 
+    adhering to the Evidence Intelligence paradigm.
     """
-    system_prompt = "You are a medical expert specialized in rare disease and phenotype extraction."
+    system_prompt = """Eres un Extractor Epistemológico.
+Tu objetivo es analizar el texto crudo proporcionado y descomponerlo en "Unidades de Evidencia" atómicas (hechos individuales). 
+
+Para ser considerado un "hecho válido", la afirmación debe encajar en una de las siguientes categorías ontológicas:
+1. Hecho de Estado Físico: Descripciones objetivas sobre el mundo, ubicaciones, dimensiones o propiedades físicas.
+2. Hecho de Intención/Voluntad: Deseos, metas u objetivos explícitamente declarados por un agente.
+3. Hecho Temporal: Eventos que ocurrieron en un momento específico o secuencias cronológicas.
+4. Hecho Normativo/Contractual: Reglas, leyes, obligaciones o prohibiciones explícitas.
+5. Hecho Descriptivo: Atributos o características de una entidad (persona, objeto, concepto).
+
+REGLAS ESTRICTAS:
+- Extrae cada hecho de forma atómica y autocontenida (que se entienda por sí solo sin contexto previo).
+- Convierte los pronombres ("yo", "él") en entidades explícitas ("el usuario", "el paciente").
+- NO deduzcas, NO asumas y NO conectes hechos. Limítate a lo explícitamente declarado.
+- Si el texto contiene una interrogación o duda dirigida al sistema, extráela en el campo "question".
+
+Devuelve EXCLUSIVAMENTE un JSON con esta estructura:
+{
+  "claims": ["Categoría: hecho extraído 1", "Categoría: hecho extraído 2"],
+  "question": "pregunta extraída"
+}"""
     
-    prompt = (f"Given a paragraph of patient information from discharge note, please extract the phenotype about this patient only. "
-             f"Check the Human Phenotype Ontology (HPO) database to determine the phenotype. "
-             f"Only output the extracted phenotypes. "
-             f"Use the format: {{'HPO': 'HP:0000000', 'Phenotype': 'Phenotype description'}} "
-             f"Use \\n as the separator between different phenotypes. "
-             f"Please describe in English. "
-             f"Do not output any other information. "
-             f"Patient information: {text}")
+    prompt = f"Texto crudo del paciente:\n{text}"
+    
+    # We must force json output format if supported by api, but since we rely on `api.get_completion`, 
+    # we just pass the prompt. We will add a small hint to ensure json parsing.
+    prompt += "\n\nAsegúrate de devolver ÚNICAMENTE el JSON crudo, sin bloques de código ni markdown."
     
     response = api.get_completion(system_prompt, prompt)
     
     if response is None:
         return []
     
-    # Parse API response to extract phenotypes
-    response_lines = response.split('\n')
-    response_lines = [line.strip() for line in response_lines if line.strip()]
-    response_lines = [line for line in response_lines if line.startswith("{") and line.endswith("}")]
+    import json
     
-    extracted_phenotypes = []
-    for item in response_lines:
-        try:
-            phenotype_data = eval(item)
-            if 'HPO' in phenotype_data and 'Phenotype' in phenotype_data:
-                extracted_phenotypes.append(phenotype_data['Phenotype'])
-        except:
-            print(f"Failed to parse: {item}")
-            continue
-    
-    return extracted_phenotypes
+    # Try to parse the json response
+    try:
+        # Clean up possible markdown formatting
+        cleaned_response = response.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        elif cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+            
+        data = json.loads(cleaned_response.strip())
+        claims = data.get("claims", [])
+        # DeepRare maps these strings to HPO, so returning the claims array directly
+        return claims
+    except Exception as e:
+        print(f"Failed to parse ontological extraction JSON: {e}")
+        print(f"Raw response was: {response}")
+        return []
 
 
 def process_phenotype_list(phenotype_list: List[str], api_key: str, hpo_model: Any, 

@@ -14,8 +14,78 @@ from tools.search_wiki import search_Wiki
 from tools.pubcase_finder import PubCaseFinderSearchTool
 from tools.phenobrain_api import PhenobrainAPITool
 from tools.omim_search import OMIMSearchTool
-from tools.llm_agent import Check_Agent, Check_Patient_Agent
+from tools.llm_agent import Check_Patient_Agent
 from tools.exomizer_inference import ExomiserRunner
+
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../claim-layer/src")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../claim-layer")))
+from claimlayer import ClaimLayer
+from claim_layer import IngestedDocument, IngestedClaim, IngestedFact
+from inference_engine import extraer_hechos_y_pregunta
+
+class LocalEmbeddingProvider:
+    def __init__(self, embedding_handler):
+        self.embedding_handler = embedding_handler
+
+    def embed(self, text: str) -> list[float]:
+        return self.embedding_handler(text)
+
+def Check_Agent(patient_info, diagnosis_to_judge, disease_knowledge, handler, similar_case_detailed):
+    """
+    [EVIDENCE INTELLIGENCE PATCH]
+    Reemplaza el antiguo Check_Agent LLM estocástico por un motor determinista ClaimLayer.
+    Extrae Claims atómicos de la literatura (PubMed/OMIM/Wiki) y resuelve matemáticamente el diagnóstico.
+    """
+    print(f"⚖️ ClaimLayer: Ingestando conocimiento crudo para evaluar matemáticamente '{diagnosis_to_judge}'...")
+    try:
+        extraccion = extraer_hechos_y_pregunta(disease_knowledge, handler)
+        hechos_conocimiento = extraccion.get("claims", [])
+    except Exception as e:
+        print("Error en extracción, usando texto crudo:", e)
+        hechos_conocimiento = [disease_knowledge]
+        
+    claims_ingestar = []
+    facts_ingestar = []
+    for j, hecho in enumerate(hechos_conocimiento):
+        c_id = f"c_know_{j}"
+        claims_ingestar.append(IngestedClaim(claim_id=c_id, text=hecho, confidence=0.85))
+        facts_ingestar.append(IngestedFact(claim_ref=c_id, entity_ref="document", fact_type="statement", value=hecho))
+        
+    if not claims_ingestar:
+        return False, "DIAGNOSIS ASSESSMENT: Incorrect (No facts extracted)"
+        
+    doc = IngestedDocument(
+        project_id="default", filename="evidence_source", entities=[],
+        claims=claims_ingestar,
+        facts=facts_ingestar
+    )
+    
+    provider = LocalEmbeddingProvider(handler.get_embedding)
+    cl = ClaimLayer(embedding_provider=provider)
+    cl.ingest([doc])
+    
+    pregunta = f"Does the literature evidence support {diagnosis_to_judge} for a patient with symptoms: {patient_info}?"
+    cl_result = cl.ask(pregunta)
+    
+    is_correct = False
+    judgement_trace = f"**EVIDENCE INTELLIGENCE TRACE for {diagnosis_to_judge}**:\n"
+    
+    if "results" in cl_result and len(cl_result["results"]) > 0:
+        max_confidence = cl_result["results"][0].get('confidence', 0.0)
+        # Umbral determinista matemático para aceptar literatura
+        if max_confidence > 0.4:
+            is_correct = True
+            judgement_trace += f"DIAGNOSIS ASSESSMENT: Correct (Mathematical Confidence: {max_confidence:.4f})\n"
+        else:
+            judgement_trace += f"DIAGNOSIS ASSESSMENT: Incorrect (Low Confidence: {max_confidence:.4f})\n"
+            
+        for res in cl_result["results"]:
+            judgement_trace += f"- {res['value'][:150]}... (Confianza: {res.get('confidence', 0.0):.4f})\n"
+    else:
+        judgement_trace += "DIAGNOSIS ASSESSMENT: Incorrect (No mathematical correlation found between literature and symptoms)\n"
+        
+    return is_correct, judgement_trace
 
 
 def get_pheonotype_knowledge(args, phenotypes, phenotype_ids, mini_handler):

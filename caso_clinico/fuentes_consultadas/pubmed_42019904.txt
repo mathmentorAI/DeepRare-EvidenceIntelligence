@@ -1,0 +1,2 @@
+Título: Agreement Between HbA1c and Continuous Glucose Monitoring-Derived Glycemic Metrics in Adults with Cystic Fibrosis Related Diabetes.
+Resumen: Cystic fibrosis related diabetes (CFRD) is a prevalent complication of cystic fibrosis that requires accurate assessment of glycemic control to guide management. Whether HbA1c reliably reflects mean glycemia in adults with CFRD, particularly in the context of CGM adoption and modern CFTR modulator therapy, remains uncertain.

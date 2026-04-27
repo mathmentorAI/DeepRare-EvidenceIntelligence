@@ -1,0 +1,2 @@
+Título: Germline Variants in Chronic Pancreatitis-associated Genes and Risk of Pancreatic Ductal Adenocarcinoma.
+Resumen: Hereditary chronic pancreatitis (CP) is associated with elevated risk of pancreatic ductal adenocarcinoma (PDAC), but the specific contributing genes and their associated risk magnitudes remain incompletely defined. We aimed to investigate whether pathogenic germline variants (PGVs) in all 11 known CP-associated genes (CASR, CEL, CFTR, CLDN2, CPA1, CPB1, CTRC, PNLIP, PRSS1, SPINK1, TRPV6) predispose to PDAC and to quantify their risk estimates.

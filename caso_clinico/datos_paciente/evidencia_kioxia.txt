@@ -1,0 +1,8 @@
+=== EVIDENCIA LOCAL KIOXIA ===
+CLINVAR:
+Encontrados 2 registros en ClinVar local.
+⚠️ ATENCIÓN: 2 entradas confirman PATOGENICIDAD.
+Ejemplo: Pathogenic/Likely pathogenic para Hypertrophic cardiomyopathy|Primary familial hypertrophic cardiomyopathy...
+
+GWAS PSEUDOMONAS:
+Análisis de susceptibilidad a Pseudomonas: La variante F508del se encuentra en un locus de alta relevancia para la colonización crónica en pacientes con FQ (Estudio Strug-hub).

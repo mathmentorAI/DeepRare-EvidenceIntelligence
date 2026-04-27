@@ -1,6 +1,6 @@
 from openai import OpenAI
-import anthropic
-import google.generativeai as genai
+# import anthropic
+# import google.generativeai as genai
 
 class Openai_api:
     def __init__(self, api_key, model):
@@ -60,6 +60,70 @@ class Openai_api:
         
     def get_embedding(self, text: str, model="text-embedding-3-small") -> list[float]:
         return self.client.embeddings.create(input=[text], model=model).data[0].embedding
+
+class Nvidia_api:
+    def __init__(self, api_key, model):
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://integrate.api.nvidia.com/v1"
+        )
+        self.model = model
+
+    def get_completion(self, system_prompt, prompt, seed=42):
+        try:       
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                seed=seed,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
+            )
+            
+            return str(completion.choices[0].message.content)
+        except Exception as e:
+            print(e)
+            return None
+
+    def mini_completion(self, system_prompt, prompt, seed=42):
+        try:       
+            completion = self.client.chat.completions.create(
+                model=self.model,  # NIM uses the main model for everything unless specified
+                seed=seed,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
+            )
+            
+            return str(completion.choices[0].message.content)
+        except Exception as e:
+            print(e)
+            return None
+            
+    def openai_summarize(self, text: str):
+        try:
+            output = self.get_completion("Assume you are a doctor, please summarize these medical article into a paragraph, only keep key message, mainly focus on the phenotype and related disease.", 
+                                        text)
+            if 'not a medical-related page' in output.lower():
+                return ""
+            else:
+                return output
+        except:
+            print("Error in summarizing the text. Return the first 1000 characters.")
+            return text[:1000]
+
+    def get_embedding(self, text: str, model="nvidia/nv-embedqa-e5-v5", input_type="passage") -> list[float]:
+        # NVIDIA has specific embedding models like nvidia/nv-embedqa-e5-v5
+        try:
+            return self.client.embeddings.create(
+                input=[text], 
+                model=model,
+                extra_body={"input_type": input_type, "truncate": "NONE"}
+            ).data[0].embedding
+        except Exception as e:
+            print(f"Embedding error: {e}")
+            return []
 
 class deepseek_api:
     def __init__(self, api_key, model):

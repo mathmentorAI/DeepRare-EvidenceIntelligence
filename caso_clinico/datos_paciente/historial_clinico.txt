@@ -1,0 +1,8 @@
+
+ANAMNESIS Y CUADRO CLÍNICO:
+Paciente masculino de 42 años con antecedentes familiares de muerte súbita (padre a los 45 años).
+Presenta disnea de esfuerzo (clase funcional NYHA II) y episodios ocasionales de síncope.
+Ecocardiografía revela hipertrofia ventricular izquierda asimétrica, con un grosor del septo de 22 mm (normal <12 mm).
+Se sospecha Miocardiopatía Hipertrófica (HCM).
+El análisis genético preliminar identifica una variante en el gen MYBPC3 (rs397516035).
+Se solicita diagnóstico de precisión y validación de patogenicidad basándose en los tres pilares del paper original.

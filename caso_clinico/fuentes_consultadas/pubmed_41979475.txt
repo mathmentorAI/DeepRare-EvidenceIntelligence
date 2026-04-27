@@ -1,0 +1,2 @@
+Título: FGF12 Alleviates Cardiac Hypertrophy by Inhibiting Phosphorylation of CaM/CaMKII/CREB1 Axis.
+Resumen: Hypertrophic cardiomyopathy (HCM) arises from genetic mutations in sarcomere proteins, resulting in major structural abnormalities and limited treatment options. Patients with HCM had reduced expression of the FGF12 (fibroblast growth factor 12), but its precise functional role remains unclear.

@@ -168,7 +168,7 @@ class ExomiserRunner:
             }
         }
 
-    def create_config(self, vcf_path, hpo_ids, sample_id):
+    def create_config(self, vcf_path, hpo_ids, sample_id, genome_assembly='hg19'):
         """
         Create Exomiser configuration for a single sample
         
@@ -182,6 +182,7 @@ class ExomiserRunner:
         """
         # Create config from template
         config = self.config_template.copy()
+        config['analysis']['genomeAssembly'] = genome_assembly
         config['analysis']['vcf'] = str(vcf_path)
         config['analysis']['hpoIds'] = hpo_ids
         
@@ -196,7 +197,7 @@ class ExomiserRunner:
         
         return config_path
 
-    def run_analysis(self, vcf_path, hpo_ids, sample_id=None, force=False, output_dir=None):
+    def run_analysis(self, vcf_path, hpo_ids, sample_id=None, force=False, output_dir=None, genome_assembly='hg19'):
         """
         Run Exomiser analysis for a single sample
         
@@ -230,8 +231,8 @@ class ExomiserRunner:
             return result_files
         
         # Create configuration
-        print(f"Creating configuration for sample: {sample_id}")
-        config_path = self.create_config(vcf_path, hpo_ids, sample_id)
+        print(f"Creating configuration for sample: {sample_id} with assembly: {genome_assembly}")
+        config_path = self.create_config(vcf_path, hpo_ids, sample_id, genome_assembly)
         
         # Run Exomiser
         print(f"Running Exomiser analysis...")
@@ -344,7 +345,7 @@ class ExomiserRunner:
                               preliminary_diagnosis="", sample_id=None, 
                               api_interface=None, model="deepseek-v3-241226",
                               system_prompt="You are an expert in rare disease diagnosis.",
-                              force=False):
+                              force=False, genome_assembly='hg19'):
         """
         Run complete pipeline: Exomiser analysis + disease diagnosis inference
         
@@ -377,8 +378,8 @@ class ExomiserRunner:
         
         try:
             # Step 1: Run Exomiser analysis
-            print(f"Step 1: Running Exomiser analysis for {sample_id}")
-            exomiser_results = self.run_analysis(vcf_path, hpo_ids, sample_id, force, self.output_dir)
+            print(f"Step 1: Running Exomiser analysis for {sample_id} on {genome_assembly}")
+            exomiser_results = self.run_analysis(vcf_path, hpo_ids, sample_id, force, self.output_dir, genome_assembly)
             
             # Step 2: Read Exomiser HTML result paths
             exomiser_html_path = exomiser_results['html']

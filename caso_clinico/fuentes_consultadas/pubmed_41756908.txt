@@ -1,0 +1,2 @@
+Título: Phosphoproteomics of Hypertrophic Cardiomyopathy Patient Myocardium and Novel hiPSC-CM Model Reveal Protein Kinase A as a Modulator of Microtubule Repolymerization.
+Resumen: Increased levels of α-tubulin and its post-translational modifications (PTMs) are found in human heart failure and could initiate diastolic dysfunction by modulating cardiomyocyte stiffness. How these modifications occur and how they may underlie cardiac dysfunction remains unknown. Upstream kinases may play a critical role, but this has not been explored.

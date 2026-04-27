@@ -155,3 +155,4 @@ xmltodict==1.0.2
 xxhash==3.6.0
 yarl==1.22.0
 zstandard==0.25.0
+claimlayer
