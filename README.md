@@ -141,3 +141,25 @@ We specifically chose this model via NVIDIA NIM for three critical clinical reas
 1. **Uncensored Medical Logic:** Llama 3.1 70B excels at following strict epistemological rules without falling into the "over-apologetic" loops that plague other commercial models when dealing with "lethal" diagnoses.
 2. **Context Window & Throughput:** Analyzing 5 massive medical papers simultaneously requires a large, highly reliable context window. NVIDIA NIM provides the high-throughput infrastructure required to process these tokens in milliseconds without API rate limits bottlenecking the parallel searches.
 3. **Deterministic Steering:** The system heavily relies on strict system prompts to extract JSON structured facts. The Llama 3.1 70B Instruct model demonstrates exceptional adherence to forced output structures, which is strictly necessary to populate the `ClaimLayer` database reliably.
+
+---
+
+## 📜 License & Attribution
+
+This project is a high-fidelity evolution of the **DeepRare** framework, enhanced with **Evidence Intelligence** (ClaimLayer).
+
+### Attribution
+This repository is based on the original research and code from:
+*   **Original Paper:** *"An agentic system for rare disease diagnosis with traceable reasoning"*, published in **Nature** (2024).
+*   **Original Authors:** Team at Shanghai Jiao Tong University.
+*   **Base Repository:** [DeepRare](https://github.com/julianig72/DeepRare) by Julian Isla.
+
+The **Evidence Intelligence** refactor (Deterministic ClaimLayer integration, Epistemological Inference Engine, and NVIDIA NIM optimization) was developed to transform agentic RAG into a hardened clinical tool.
+
+### Licensing
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**. 
+- **Attribution:** You must give appropriate credit to the original authors and the Evidence Intelligence project.
+- **Non-Commercial:** You may not use this material for commercial purposes without prior authorization.
+
+---
+*Developed with ❤️ for the Rare Disease Community.*
