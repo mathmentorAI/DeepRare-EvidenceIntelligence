@@ -85,8 +85,12 @@ def PubCaseFinderSearchTool(args, query):
     print("[LOG] Sending API request...")
     
     # 发送请求
-    response = requests.get(api_url, headers=headers, timeout=60)
-    response.raise_for_status()
+    try:
+        response = requests.get(api_url, headers=headers, timeout=60)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"[LOG] PubCaseFinder API request failed: {e}")
+        return "PubCaseFinder: API temporarily unavailable. Proceeding without PubCaseFinder results."
     
     print(f"[LOG] API response status: {response.status_code}")
     print(f"[LOG] Response content type: {response.headers.get('content-type', 'unknown')}")

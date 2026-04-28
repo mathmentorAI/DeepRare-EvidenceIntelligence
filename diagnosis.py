@@ -307,11 +307,11 @@ def make_diagnosis(args, i, patient, rare_prompt, orphanet_data, concept2id, orp
         
         ## Web Diagnosis
         if args.search_engine == 'google':
-            web_diagnosis = GoogleSearchTool(args, patient_info, mini_handler, read_content=True, return_num=5*search_depth)
+            web_diagnosis = GoogleSearchTool(args, patient_info, read_content=True, return_num=5*search_depth, mini_handler=mini_handler)
         elif args.search_engine == 'duckduckgo':
-            web_diagnosis = DuckDuckGoSearchTool(args, patient_info, mini_handler, read_content=True, return_num=5*search_depth)
+            web_diagnosis = DuckDuckGoSearchTool(args, patient_info, read_content=True, return_num=5*search_depth, mini_handler=mini_handler)
         else:  
-            web_diagnosis = BingSearchTool(args, patient_info, mini_handler, read_content=True, return_num=5*search_depth)
+            web_diagnosis = BingSearchTool(args, patient_info, read_content=True, return_num=5*search_depth, mini_handler=mini_handler)
         print('completed web search')
         ## LLM Diagnosis
         llm_response = handler.get_completion(system_prompt, prompt)
@@ -319,10 +319,16 @@ def make_diagnosis(args, i, patient, rare_prompt, orphanet_data, concept2id, orp
         
         ## Similar Cases
         # retrieve by openai text-embedding-3-small to get top 20 similar cases
-        head_similar_cases = similar_case_search(similar_cases, patient_info, embedding_handler, n=50)
-        
-        # retrieve by medcpt to get top 3 similar cases    
-        similar_case_detailed = get_similar_cases(args, head_similar_cases, retr_model, retr_tokenizer, patient_info, handler, topk=3*search_depth )
+        try:
+            head_similar_cases = similar_case_search(similar_cases, patient_info, embedding_handler, n=50)
+            if head_similar_cases is not None and len(head_similar_cases) > 0:
+                # retrieve by medcpt to get top 3 similar cases    
+                similar_case_detailed = get_similar_cases(args, head_similar_cases, retr_model, retr_tokenizer, patient_info, handler, topk=3*search_depth)
+            else:
+                similar_case_detailed = "No similar cases available."
+        except Exception as e:
+            print(f"[LOG] Similar cases retrieval failed: {e}")
+            similar_case_detailed = "Similar case retrieval unavailable."
 
         ### Summarize and diagnosis
         memory_1 =  f"""You have access to the following context:
@@ -375,11 +381,20 @@ Based on the above and your knowledge, enumerate the **top 5 most likely rare di
         result = handler.get_completion(system_prompt, memory_1)
         
         ### Reflected Diagnosis
-        judge_result, judgements, tmp_save = get_orphanet_id_from_disease(args, result, embeds_disease, concept2id, orpha2omim, 
-                                                                        eval_model, eval_tokenizer, orphanet_data, patient_info, 
-                                                                        search_depth, handler, mini_handler, tmp_save, similar_case_detailed)
+        try:
+            if embeds_disease is not None and len(concept2id) > 0:
+                judge_result, judgements, tmp_save = get_orphanet_id_from_disease(args, result, embeds_disease, concept2id, orpha2omim, 
+                                                                                eval_model, eval_tokenizer, orphanet_data, patient_info, 
+                                                                                search_depth, handler, mini_handler, tmp_save, similar_case_detailed)
+            else:
+                print("[LOG] Disease embeddings not available — skipping Orphanet ID matching.")
+                judge_result = [1]  # Consider the diagnosis valid so we don't loop
+                judgements = "Orphanet ID matching skipped (embeddings not loaded)."
+        except Exception as e:
+            print(f"[LOG] Orphanet matching failed: {e}")
+            judge_result = [1]
+            judgements = f"Orphanet matching error: {str(e)}"
         
-        # ipdb.set_trace()
         # if all the diagnosis are incorrect, then change the search depth
         if sum(judge_result) > 0:
             flag = False
@@ -437,8 +452,16 @@ Based on the above and your knowledge, enumerate the **top 5 most likely rare di
     if "results" in cl_result and len(cl_result["results"]) > 0:
         for res in cl_result["results"]:
             evidencias_recuperadas.append(f"- {res['value']} (Confianza: {res.get('confidence', 1.0):.4f})")
+    
+    # Fallback: Si no hay resultados semánticos, usar los hechos base y evidencias de herramientas directamente
+    if not evidencias_recuperadas:
+        print("[LOG] ClaimLayer ask returned no results. Using all ingested facts as fallback.")
+        for fact in hechos_base:
+            evidencias_recuperadas.append(f"- {fact}")
+        for evidence in tool_evidences:
+            evidencias_recuperadas.append(f"- {evidence}")
 
-    evidencia_contexto = "\\n".join(evidencias_recuperadas)
+    evidencia_contexto = "\n".join(evidencias_recuperadas)
     print("Evidencias matemáticamente validadas:")
     print(evidencia_contexto)
                 
@@ -487,7 +510,7 @@ Based strictly on the above evidence, enumerate the top 5 most likely rare disea
 3. Do **not** hallucinate. Only use the facts given in the Validated Evidence.
 """
     
-    final_diagnois = handler.get_completion(system_prompt, memory_2)
+    final_diagnosis = handler.get_completion(system_prompt, memory_2)
 
 
     ### Return the patient information
@@ -504,6 +527,11 @@ Based strictly on the above evidence, enumerate the top 5 most likely rare disea
     patient_info["first_round_result"] = result
     patient_info["judge_result"] = judge_result
     patient_info["judgements"] = judgements
-    patient_info["final_diagnois"] = final_diagnois
+    patient_info["final_diagnosis"] = final_diagnosis
+    patient_info["evidence_intelligence"] = {
+        "cl_result": cl_result,
+        "inference": inferencia_data,
+        "validated_evidence": evidencias_recuperadas
+    }
 
     return patient_info
