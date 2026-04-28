@@ -20,14 +20,14 @@ export function Button({ children, onClick, disabled, loading, variant = 'primar
 
 export function Card({ children, className = '' }) {
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm ${className}`}>
+    <div className={`bg-surface rounded-xl border border-glass shadow-sm ${className}`}>
       {children}
     </div>
   );
 }
 
 export function CardHeader({ children, className = '' }) {
-  return <div className={`px-6 py-4 border-b border-slate-200 dark:border-slate-700 ${className}`}>{children}</div>;
+  return <div className={`px-6 py-4 border-b border-glass ${className}`}>{children}</div>;
 }
 
 export function CardBody({ children, className = '' }) {
@@ -39,8 +39,8 @@ export function Input({ label, error, className = '', ...props }) {
     <div className={className}>
       {label && <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>}
       <input
-        className={`w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-slate-800 dark:text-slate-200 transition-colors
-          ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-600 focus:ring-blue-500 focus:border-blue-500'}
+        className={`w-full px-3 py-2 rounded-lg border text-sm bg-surface text-base transition-colors
+          ${error ? 'border-red-500 focus:ring-red-500' : 'border-glass focus:ring-blue-500 focus:border-blue-500'}
           focus:outline-none focus:ring-2 focus:ring-offset-0`}
         {...props}
       />
@@ -54,8 +54,8 @@ export function TextArea({ label, error, className = '', ...props }) {
     <div className={className}>
       {label && <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>}
       <textarea
-        className={`w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-slate-800 dark:text-slate-200 transition-colors resize-y
-          ${error ? 'border-red-500' : 'border-slate-300 dark:border-slate-600 focus:ring-blue-500 focus:border-blue-500'}
+        className={`w-full px-3 py-2 rounded-lg border text-sm bg-surface text-base transition-colors resize-y
+          ${error ? 'border-red-500' : 'border-glass focus:ring-blue-500 focus:border-blue-500'}
           focus:outline-none focus:ring-2 focus:ring-offset-0`}
         {...props}
       />

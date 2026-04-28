@@ -26,7 +26,7 @@ export default function Sidebar() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+      <div className="p-4 border-b border-glass">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
             <Dna className="w-6 h-6 text-white" />
@@ -63,7 +63,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom controls */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
+      <div className="p-3 border-t border-glass space-y-2">
         <button onClick={toggleLang}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 w-full">
           <Languages className="w-5 h-5" />
@@ -103,7 +103,7 @@ export default function Sidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-20' : 'w-64'} h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 shrink-0`}>
+      <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-20' : 'w-64'} h-screen bg-surface border-r border-glass transition-all duration-300 shrink-0`}>
         {sidebarContent}
       </aside>
     </>

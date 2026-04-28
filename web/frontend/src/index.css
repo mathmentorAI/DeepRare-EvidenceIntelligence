@@ -1,13 +1,32 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-accent: #7c3aed;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --border-glass: rgba(0, 0, 0, 0.05);
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+}
+
+.dark {
   --color-primary: #3b82f6;
   --color-primary-dark: #1d4ed8;
   --color-accent: #8b5cf6;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
+  
   --bg-main: #0a0a0c;
   --bg-surface: #141418;
   --bg-card: rgba(26, 26, 32, 0.7);
@@ -71,3 +90,20 @@ body {
   50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); }
 }
 .glow-primary { animation: glow 3s ease-in-out infinite; }
+
+/* Custom Utilities to bridge variables and tailwind */
+@utility bg-main {
+  background-color: var(--bg-main);
+}
+@utility bg-surface {
+  background-color: var(--bg-surface);
+}
+@utility text-base {
+  color: var(--text-primary);
+}
+@utility text-muted {
+  color: var(--text-secondary);
+}
+@utility border-glass {
+  border-color: var(--border-glass);
+}
